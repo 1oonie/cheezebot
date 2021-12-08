@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("./discord.py")
 
-import discord # type: ignore
+import discord  # type: ignore
 
 from pipe import where, map
 import matplotlib.pyplot as plt
@@ -16,6 +16,7 @@ from textwrap import indent
 import traceback
 
 from config import *
+
 
 def pie_chart(*args, **kwargs):
     buffer = BytesIO()
@@ -37,16 +38,29 @@ class TockTick(slash_util.ApplicationCog):
         await interaction.response.defer(ephemeral=True)
 
         messages = (
-            await interaction.guild.get_channel(916431428693135360).history(limit=None).flatten()
-        ) | where(lambda m: len(m.attachments) != 0)
-        
-        def count_emoji(emoji, reactions):
-            return sum(r.count for r in reactions if r.emoji == emoji)
+            await interaction.guild.get_channel(916431428693135360)
+            .history(limit=100)
+            .flatten()
+        ) | where(lambda m: len(m.attachments) != 0 and not (m.attachments[0].height is None or m.attachments[0].height < 100))
+
+        async def count_emoji(emoji, reactions):
+            count = 0
+            for r in reactions:
+                users = await r.users().flatten()
+                if not r.emoji == emoji:
+                    continue
+
+                if r.message.author in users:
+                    count -= 1
+                count += r.count
+            return count
 
         reaction_count = defaultdict(int)
         for message in messages:
-            reaction_count[str(message.author)] += count_emoji("👍", message.reactions)
-        
+            reaction_count[message.author.name] += await count_emoji(
+                "👍", message.reactions
+            )
+
         s = sum(v for v in reaction_count.values() if v >= 0)
 
         data = defaultdict(int)
@@ -54,13 +68,23 @@ class TockTick(slash_util.ApplicationCog):
             if reaction_count[r] <= 0:
                 continue
 
-            data[r] = reaction_count[r] * (360/s) # type: ignore
+            data[r] = reaction_count[r] * (360 / s)  # type: ignore
 
-        fn = partial(pie_chart, list(data.values()), labels=list(data.keys()), startangle=90, shadow=True)
+        fn = partial(
+            pie_chart,
+            list(data.values()),
+            labels=list(data.keys()),
+            startangle=90,
+            shadow=True,
+        )
         file = await ctx.bot.loop.run_in_executor(None, fn)
 
-        await interaction.edit_original_message(content="```" + "\n".join(f"{r}: {reaction_count[r]}" for r in reaction_count) + "```", file=file)
-
+        await interaction.edit_original_message(
+            content="```"
+            + "\n".join(f"{r}: {reaction_count[r]}" for r in reaction_count)
+            + "```",
+            file=file,
+        )
 
 
 class Bot(slash_util.Bot):
@@ -92,21 +116,28 @@ class Bot(slash_util.Bot):
 
         if message.channel.id == 916431428693135360:
             if not len(message.attachments) == 0:
-                await message.add_reaction("👍")
-                await message.add_reaction("👎")
-        
+                if not (message.attachments[0].height is None or message.attachments[0].height < 100):
+
+                    await message.add_reaction("👍")
+                    await message.add_reaction("👎")
+
         if message.author.id == 737928480389333004:
             if message.content.startswith("```py"):
                 env = {}
                 env.update(globals())
                 env.update(locals())
 
-                clean_content = "async def func():\n" + indent(message.content.strip("```py"), "    ")
+                clean_content = "async def func():\n" + indent(
+                    message.content.strip("```py"), "    "
+                )
                 try:
                     exec(clean_content, env)
                     await env["func"]()
                 except:
-                    await message.channel.send("```py\n" + traceback.format_exc() +"```")
+                    await message.channel.send(
+                        "```py\n" + traceback.format_exc() + "```"
+                    )
+
 
 bot = Bot(command_prefix="!")
 
