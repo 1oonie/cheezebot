@@ -46,12 +46,9 @@ class TockTick(slash_util.ApplicationCog):
         async def count_emoji(emoji, reactions):
             count = 0
             for r in reactions:
-                users = await r.users().flatten()
                 if not r.emoji == emoji:
                     continue
 
-                if r.message.author in users:
-                    count -= 1
                 count += r.count
             return count
 
