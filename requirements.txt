@@ -1,4 +1,3 @@
 -r discord.py/requirements.txt
-Wand
 matplotlib
 pipe
