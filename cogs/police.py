@@ -40,7 +40,7 @@ class Police(slash.Cog):
         await interaction.response.send_message(
             f"{user!s} has been imprisoned by {interaction.user!s}! They will be released in <t:{round(expires.timestamp())}:R>"
         )
-    
+
     @slash.slash_command(
         name="release",
         description="Release someone from prison (remove their timeout)",
@@ -54,16 +54,16 @@ class Police(slash.Cog):
     @slash.option("user", description="The user you want to release")
     @slash.permission(737928480389333004, type=discord.User, allow=True)
     @slash.permission(922883079738126356, type=discord.Role, allow=True)
-    async def release(
-        self, interaction, user: discord.User, reason: str
-    ):
+    async def release(self, interaction, user: discord.User, reason: str):
         r = Route(
             "PATCH",
             "/guilds/{guild_id}/members/{user_id}",
             guild_id=interaction.guild.id,
             user_id=user.id,
         )
-        await self.bot.http.request(r, json={"communication_disabled_until": None}, reason=reason)
+        await self.bot.http.request(
+            r, json={"communication_disabled_until": None}, reason=reason
+        )
 
         await interaction.response.send_message(
             f"{user!s} has been released from prison by {interaction.user!s}."

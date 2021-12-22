@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 from collections import defaultdict
 from functools import partial
+from glob import glob
+import random
 
 
 def pie_chart(*args, **kwargs):
@@ -105,11 +107,19 @@ class TockTik(slash.Cog):
 
         file = await self.bot.loop.run_in_executor(None, fn)
 
+        adverts = glob("ads/**")
+        if not adverts:
+            files = [file]
+        else:
+            choice = random.choice(adverts)
+            advert = discord.File(choice, filename="advert." + choice.split(".")[-1])
+            files = [file, advert]
+
         await interaction.edit_original_message(
             content="```"
             + "\n".join(f"{r}: {reaction_count[r]}" for r in reaction_count)
             + "```",
-            file=file,
+            files=files,
         )
 
     @slash.slash_command(

@@ -74,7 +74,7 @@ class Bot(slash.Bot):
 
 bot = Bot()
 
-extensions = ["tocktik", "police"]
+extensions = ["tocktik", "police", "banking"]
 
 for extension in extensions:
     bot.load_extension("cogs." + extension)
