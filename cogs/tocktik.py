@@ -1,14 +1,14 @@
-import discord  # type: ignore
-from discord import slash  # type: ignore
-
-from pipe import where, map
-import matplotlib.pyplot as plt
-
-from io import BytesIO
+import random
 from collections import defaultdict
 from functools import partial
 from glob import glob
-import random
+from io import BytesIO
+
+import matplotlib.pyplot as plt
+from pipe import map, where
+
+import discord  # type: ignore
+from discord import slash  # type: ignore
 
 
 def pie_chart(*args, **kwargs):

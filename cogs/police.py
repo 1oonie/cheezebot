@@ -1,8 +1,8 @@
+from datetime import datetime, timedelta, timezone
+
 import discord  # type: ignore
 from discord import slash  # type: ignore
 from discord.http import Route  # type: ignore
-
-from datetime import datetime, timedelta, timezone
 
 
 class Police(slash.Cog):
