@@ -3,6 +3,23 @@ from difflib import SequenceMatcher
 
 import discord  # type: ignore
 from discord import slash  # type: ignore
+from discord import ui # type: ignore
+
+class Confirm(ui.View):
+    def __init__(self, *args, **kwargs):
+        self.value = False
+        super().__init__(*args, **kwargs)
+
+    @ui.button(label="Yes", style=discord.ButtonStyle.success)
+    async def yes(self, _, interaction):
+        await interaction.response.defer()
+        self.value = True
+        self.stop()
+    
+    @ui.button(label="No", style=discord.ButtonStyle.danger)
+    async def no(self, _, interaction):
+        await interaction.response.defer()
+        self.stop()
 
 
 class Banking(slash.Cog):
@@ -22,15 +39,15 @@ class Banking(slash.Cog):
             balance = self.bot.data["banking"]["users"][str(interaction.user.id)]
 
         orgs = []
-        for org in self.bot.data["banking"]["organisations"]:
+        for name, org in self.bot.data["banking"]["organisations"].items():
             if org["owner"] == str(interaction.user.id):
                 orgs.append(
-                    dict(**self.bot.data["banking"]["organisations"][org], name=org)
+                    dict(balance=org["balance"], name=name)
                 )
 
         content = f"You have {balance} 🪙\n"
         for n, org in enumerate(orgs, start=1):
-            content += f"\n{n}. {org['name']} - {org['balance']}"
+            content += f"\n{n}. {org['name']} - {org['balance']} 🪙"
 
         await interaction.response.send_message(content=content, ephemeral=True)
 
@@ -40,8 +57,8 @@ class Banking(slash.Cog):
 
     async def my_orgs(self, interaction, value):
         orgs = [
-            o
-            for o in self.bot.data["banking"]["organisations"]
+            n
+            for n, o in self.bot.data["banking"]["organisations"].items()
             if str(interaction.user.id) == o["owner"]
         ]
         return sorted(orgs, key=lambda o: SequenceMatcher(None, value, o).ratio())
@@ -155,7 +172,7 @@ class Banking(slash.Cog):
         self,
         interaction,
         payee: str,
-        amount: int,
+        amount: float,
         organisation: str = None,
         anonymous: bool = False,
     ):
@@ -194,10 +211,7 @@ class Banking(slash.Cog):
             )
             return
 
-        if payee in self.bot.data["banking"]["organisations"]:
-            self.bot.data["banking"]["organisations"][payee] += amount
-        else:
-            self.bot.data["banking"]["organisations"][payee] = amount
+        self.bot.data["banking"]["organisations"][payee]["balance"] += amount
 
         if organisation is None:
             self.bot.data["banking"]["users"][str(interaction.user.id)] -= amount
@@ -224,6 +238,10 @@ class Banking(slash.Cog):
         name="claimrollcall",
         description="Claims your MP rollcall for the day",
         guild_id=907657508292792342,
+        default_permission=False
+    )
+    @slash.permission(
+        912022899806855178, type=discord.Role, allow=True
     )
     async def claimrollcall(self, interaction):
         now = int(datetime.now(timezone.utc).timestamp())
@@ -248,11 +266,91 @@ class Banking(slash.Cog):
                 content=f"Sorry, you last claimed your rollcall <t:{ago}:R>, please wait a little longer",
                 ephemeral=True,
             )
+    
+    @slash.slash_command(
+        name="org",
+        description="Organisation-related commands",
+        guild_id=907657508292792342
+    )
+    async def org(self):
+        ...
+    
+    @org.command(name="create", description="Create an organisation")
+    @slash.option("name", description="The name of your new organisation")
+    async def org_create(self, interaction, name: str):
+        if name in self.bot.data["banking"]["organisations"]:
+            await interaction.response.send_message(
+                content=f"An organisation with the name {name} already exists",
+                ephemeral=True,
+            )
+            return
+        
+        self.bot.data["banking"]["organisations"][name] = {
+            "balance": 0,
+            "owner": str(interaction.user.id)
+        }
+        await interaction.response.send_message(
+            content=f"Successfully created {name}!",
+            ephemeral=True,
+        )
+    
+    @org.command(name="edit", description="Edit an organisation")
+    @slash.option("name", description="Change the name", required=False)
+    @slash.option("owner", description="Change who owns the organisation", required=False)
+    @slash.option("org", description="The name of the organisation that you want to edit", autocomplete=my_orgs)
+    async def org_edit(self, interaction, org: str, owner: discord.User = None, name: str = None):
+        if not org in self.bot.data["banking"]["organisations"] or self.bot.data["banking"]["organisations"][org]["owner"] != str(interaction.user.id):
+            await interaction.response.send_message(
+                content=f"An organisation with the name {org} does not exist, or you do not own it",
+                ephemeral=True,
+            )
+            return
+        
+        if owner is not None:
+            self.bot.data["banking"]["organisations"][org]["owner"] = str(owner.id)
+        if name is not None:
+            self.bot.data["banking"]["organisations"][name] = self.bot.data["banking"]["organisations"][org]
+            del self.bot.data["banking"]["organisations"][org]
+        
+        await interaction.response.send_message(
+            content=f"Successfully applied changes to {org}",
+            ephemeral=True,
+        )
+    
+    @org.command(name="delete", description="Delete an organisation that you own")
+    @slash.option("org", description="The name of the organisation that you want to edit", autocomplete=my_orgs)
+    async def org_delete(self, interaction, org: str):
+        if not org in self.bot.data["banking"]["organisations"] or self.bot.data["banking"]["organisations"][org]["owner"] != str(interaction.user.id):
+            await interaction.response.send_message(
+                content=f"An organisation with the name {org} does not exist, or you do not own it",
+                ephemeral=True,
+            )
+            return
+        
+        view = Confirm(timeout=60)
+        await interaction.response.send_message(content=f"Are you sure you want to delete {org}", view=view, ephemeral=True)
+
+        await view.wait()
+        await interaction.edit_original_message(view=None)
+
+        if view.value:
+            del self.bot.data["banking"]["organisations"][org]
+
+            await interaction.followup.send(
+                content=f"Successfully deleted {org}",
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                content="Aborted.",
+                ephemeral=True
+            )
 
     @slash.slash_command(
         name="sudo",
         description="Super-user commands, do not touch!",
         guild_id=907657508292792342,
+        default_permission=False
     )
     @slash.permission(737928480389333004, type=discord.User, allow=True)
     @slash.permission(907660552938061834, type=discord.Role, allow=True)

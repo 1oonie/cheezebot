@@ -7,6 +7,7 @@ import json
 import traceback
 from textwrap import indent
 from io import StringIO
+from datetime import datetime, timezone
 
 import config
 import discord  # type: ignore
@@ -20,6 +21,23 @@ async def save_data(bot):
         with open("data.json", "w") as f:
             f.write(json.dumps(bot.data, indent=4))
 
+async def apply_wealth_tax(bot):
+    while True:
+        now = int(datetime.now(timezone.utc).timestamp())
+        if "last_wealth_tax" not in bot.data["banking"] or (bot.data["banking"]["last_wealth_tax"] - now) >= 86400:
+            tax = 1 - bot.data["banking"]["wealth_tax"]
+
+            for user in bot.data["banking"]["users"]:
+                bot.data["banking"]["users"][user] *= tax
+            for org in bot.data["banking"]["organisations"]:
+                bot.data["banking"]["organisations"][org]["balance"] *= tax
+
+            bot.data["banking"]["last_wealth_tax"] = now
+        else:
+            last = bot.data["banking"]["last_wealth_tax"]
+            await asyncio.sleep((last+86400+1) - now)
+
+
 
 class Bot(slash.Bot):
     GITHUB_TOKEN = config.GITHUB_TOKEN
@@ -31,6 +49,7 @@ class Bot(slash.Bot):
         super().__init__(**kwargs)
 
         self._save_task = self.loop.create_task(save_data(self))
+        self._wealth_tax = self.loop.create_task(apply_wealth_tax(self))
     
 
     def send_multipart_helper(
