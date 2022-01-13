@@ -83,7 +83,7 @@ class Banking(slash.Cog):
         required=False,
         autocomplete=my_orgs
     )
-    @slash.option("amount", description="The amount of cheesecoin you wish to pay them")
+    @slash.option("amount", description="The amount of cheesecoin you wish to pay them", min_value=0.0, max_value=1000.0)
     @slash.option("payee", description="The user you want to pay your cheesecoin to")
     async def pay_user(
         self,
@@ -149,6 +149,7 @@ class Banking(slash.Cog):
             content=f"You have paid {payee!s} {amount} 🪙",
             ephemeral=True,
         )
+        await self.bot.log(f"{receiver} has paid {amount} to {payee!s}")
 
     @pay.command(name="organisation", description="Pay an organisation some cheesecoin")
     @slash.option(
@@ -162,7 +163,7 @@ class Banking(slash.Cog):
         required=False,
         autocomplete=my_orgs
     )
-    @slash.option("amount", description="The amount of cheesecoint you want to pay")
+    @slash.option("amount", description="The amount of cheesecoint you want to pay", min_value=0.0, max_value=1000.0)
     @slash.option(
         "payee",
         description="The organisation you wish to pay cheesecoin to",
@@ -228,11 +229,12 @@ class Banking(slash.Cog):
             else "Anon."
         )
 
-        await owner.send(content=f"You have received {amount} from {receiver}")
+        await owner.send(content=f"You ({payee}) have received {amount} from {receiver}")
         await interaction.response.send_message(
             content=f"You have paid {payee} {amount} 🪙",
             ephemeral=True,
         )
+        await self.bot.log(f"{receiver} has paid {amount} to {payee}")
 
     @slash.slash_command(
         name="claimrollcall",
@@ -259,6 +261,7 @@ class Banking(slash.Cog):
                 content="Successfully claimed rollcall!",
                 ephemeral=True,
             )
+            await self.bot.log(f"{interaction.user.id} has claimed their rollcall")
 
         else:
             ago = self.bot.data["banking"]["rollcall"][str(interaction.user.id)]
@@ -293,6 +296,7 @@ class Banking(slash.Cog):
             content=f"Successfully created {name}!",
             ephemeral=True,
         )
+        await self.bot.log(f"{interaction.user.id} has created an organisation with name {name!s}")
     
     @org.command(name="edit", description="Edit an organisation")
     @slash.option("name", description="Change the name", required=False)
@@ -316,6 +320,7 @@ class Banking(slash.Cog):
             content=f"Successfully applied changes to {org}",
             ephemeral=True,
         )
+        await self.bot.log(f"{interaction.user.id} has edited an organisation ({org}) and set the owner to {owner!s} and the name to {name!s}")
     
     @org.command(name="delete", description="Delete an organisation that you own")
     @slash.option("org", description="The name of the organisation that you want to edit", autocomplete=my_orgs)
@@ -340,6 +345,7 @@ class Banking(slash.Cog):
                 content=f"Successfully deleted {org}",
                 ephemeral=True
             )
+            await self.bot.log(f"{interaction.user.id} has deleted {org!s}")
         else:
             await interaction.followup.send(
                 content="Aborted.",

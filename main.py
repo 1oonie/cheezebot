@@ -29,8 +29,10 @@ async def apply_wealth_tax(bot):
 
             for user in bot.data["banking"]["users"]:
                 bot.data["banking"]["users"][user] *= tax
+                bot.data["banking"]["users"][user] = round(bot.data["banking"]["users"][user], 2)
             for org in bot.data["banking"]["organisations"]:
                 bot.data["banking"]["organisations"][org]["balance"] *= tax
+                bot.data["banking"]["organisations"][org]["balance"] = round(bot.data["banking"]["organisations"][org]["balance"], 2)
 
             bot.data["banking"]["last_wealth_tax"] = now
         else:
@@ -40,6 +42,7 @@ async def apply_wealth_tax(bot):
 
 
 class Bot(slash.Bot):
+    LOG_CHANNEL = config.LOG_CHANNEL
     GITHUB_TOKEN = config.GITHUB_TOKEN
 
     def __init__(self, **kwargs) -> None:
@@ -163,7 +166,8 @@ class Bot(slash.Bot):
                     "message": message,
                     "author": message.author,
                     "guild": message.guild,
-                    "channel": message.channel
+                    "channel": message.channel,
+                    "bot": self
                 }
 
                 clean_content = "async def func():\n" + indent(
@@ -176,6 +180,10 @@ class Bot(slash.Bot):
                     await message.channel.send(
                         "```py\n" + traceback.format_exc() + "```"
                     )
+    
+    async def log(self, message):
+        channel = self.get_channel(self.LOG_CHANNEL)
+        await channel.send(message)
 
 bot = Bot()
 
