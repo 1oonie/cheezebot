@@ -252,6 +252,8 @@ class Banking(slash.Cog):
         ) >= 86400:
             self.bot.data["banking"]["rollcall"][str(interaction.user.id)] = now
 
+            self.bot.data["banking"]["organisations"]["Treasury"]["balance"] -= 2
+
             if str(interaction.user.id) in self.bot.data["banking"]["users"]:
                 self.bot.data["banking"]["users"][str(interaction.user.id)] += 2
             else:
@@ -362,7 +364,7 @@ class Banking(slash.Cog):
     @slash.permission(907660552938061834, type=discord.Role, allow=True)
     @slash.permission(922878833080799242, type=discord.Role, allow=True)
     @slash.permission(922883235648774165, type=discord.Role, allow=True)
-    async def sudo(self):
+    async def sudo(self, interaction):
         ...
 
 

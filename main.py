@@ -22,22 +22,35 @@ async def save_data(bot):
             f.write(json.dumps(bot.data, indent=4))
 
 async def apply_wealth_tax(bot):
+    print("starting wealth tax task...")
     while True:
         now = int(datetime.now(timezone.utc).timestamp())
-        if "last_wealth_tax" not in bot.data["banking"] or (bot.data["banking"]["last_wealth_tax"] - now) >= 86400:
-            tax = 1 - bot.data["banking"]["wealth_tax"]
+
+        if "last_wealth_tax" not in bot.data["banking"] or (now - bot.data["banking"]["last_wealth_tax"]) >= 86400:
+            print("applying wealth tax, treasury balance is", bot.data["banking"]["organisations"]["Treasury"]["balance"])
+            tax = bot.data["banking"]["wealth_tax"]
 
             for user in bot.data["banking"]["users"]:
-                bot.data["banking"]["users"][user] *= tax
+                original = bot.data["banking"]["users"][user]
+                bot.data["banking"]["users"][user] *= (1 - tax)
                 bot.data["banking"]["users"][user] = round(bot.data["banking"]["users"][user], 2)
+
+                bot.data["banking"]["organisations"]["Treasury"]["balance"] += original - bot.data["banking"]["users"][user]
+
             for org in bot.data["banking"]["organisations"]:
-                bot.data["banking"]["organisations"][org]["balance"] *= tax
+                original = bot.data["banking"]["organisations"][org]["balance"]
+                bot.data["banking"]["organisations"][org]["balance"] *= (1 - tax)
                 bot.data["banking"]["organisations"][org]["balance"] = round(bot.data["banking"]["organisations"][org]["balance"], 2)
 
+                bot.data["banking"]["organisations"]["Treasury"]["balance"] += original - bot.data["banking"]["organisations"][org]["balance"]
+
             bot.data["banking"]["last_wealth_tax"] = now
+
+            print("finished wealth tax, treasury balance is", bot.data["banking"]["organisations"]["Treasury"]["balance"])
         else:
             last = bot.data["banking"]["last_wealth_tax"]
-            await asyncio.sleep((last+86400+1) - now)
+            print("sleeping for", (last+86400) - now, "seconds")
+            await asyncio.sleep((last+86400) - now)
 
 
 
