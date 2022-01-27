@@ -252,12 +252,12 @@ class Banking(slash.Cog):
         ) >= 86400:
             self.bot.data["banking"]["rollcall"][str(interaction.user.id)] = now
 
-            self.bot.data["banking"]["organisations"]["Treasury"]["balance"] -= 2
+            self.bot.data["banking"]["organisations"]["Treasury"]["balance"] -= 1.5
 
             if str(interaction.user.id) in self.bot.data["banking"]["users"]:
-                self.bot.data["banking"]["users"][str(interaction.user.id)] += 2
+                self.bot.data["banking"]["users"][str(interaction.user.id)] += 1.5
             else:
-                self.bot.data["banking"]["users"][str(interaction.user.id)] = 2
+                self.bot.data["banking"]["users"][str(interaction.user.id)] = 1.5
 
             await interaction.response.send_message(
                 content="Successfully claimed rollcall!",
